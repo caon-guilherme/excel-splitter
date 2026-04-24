@@ -10,7 +10,10 @@ import './index.css';
 export default function App() {
   const [data, setData] = useState<any[][]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
-  const [chunkSize, setChunkSize] = useState(100);
+  const [chunkSize, setChunkSize] = useState(() => {
+    const saved = localStorage.getItem('chunkSize');
+    return saved ? Number(saved) : 100;
+  });
   const [phoneColIndex, setPhoneColIndex] = useState(0);
   const [nameColIndex, setNameColIndex] = useState(0);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -33,6 +36,10 @@ export default function App() {
   React.useEffect(() => {
     localStorage.setItem('controlRows', JSON.stringify(controlRows));
   }, [controlRows]);
+
+  React.useEffect(() => {
+    localStorage.setItem('chunkSize', String(chunkSize));
+  }, [chunkSize]);
 
   React.useEffect(() => {
     const onDragOver = (e: DragEvent) => {

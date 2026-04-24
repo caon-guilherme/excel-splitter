@@ -111,6 +111,13 @@ input[type=number] {
   padding: 8px 12px;
   font-size: 14px;
   transition: border-color .2s;
+  -moz-appearance: textfield;
+}
+
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 input[type=number]:focus {
