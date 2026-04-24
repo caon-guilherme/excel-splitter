@@ -259,3 +259,30 @@ input[type=number]:focus {
 .table-cell:last-child {
   border-right: none;
 }
+
+.app-root {
+  display: contents;
+}
+
+.drag-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(37, 99, 235, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  gap: 16px;
+  color: white;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.drag-overlay svg {
+  animation: bounce .5s infinite alternate;
+}
+
+@keyframes bounce {
+  from { transform: translateY(0); }
+  to { transform: translateY(-10px); }
+}
