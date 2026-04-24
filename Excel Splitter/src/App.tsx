@@ -457,7 +457,7 @@ export default function App() {
             {controlRows.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {controlRows.map((row, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '8px 12px', borderRadius: 4, border: '1px solid var(--border)' }}>
+                  <div key={i} className="added-contact-row">
                     <span style={{ fontSize: 13, fontWeight: 500 }}>{row.name || '-'} <span style={{ color: 'var(--text-light)', marginLeft: 8 }}>{row.phone || '-'}</span></span>
                     <button
                       style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
@@ -516,7 +516,7 @@ export default function App() {
           </div>
         </div>
 
-        <div>
+        <div className="table-responsive-wrapper">
           <div className="table-header">
             {headers.map((header, i) => (
               <div key={i} style={{ flex: i === phoneColIndex ? 2 : 1 }}>
@@ -524,7 +524,7 @@ export default function App() {
               </div>
             ))}
           </div>
-          <div className="table-container" style={{ height: 500 }}>
+          <div className="table-body-container" style={{ height: 500 }}>
             {data.length > 0 && (
               <div ref={parentRef} style={{ height: '100%', overflow: 'auto' }}>
                 <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
