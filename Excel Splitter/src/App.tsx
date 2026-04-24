@@ -388,7 +388,7 @@ export default function App() {
           />
 
           <div style={{ marginTop: 24, padding: 16, backgroundColor: '#f8fafc', borderRadius: 8, border: '1px solid var(--border)' }}>
-            <h3 style={{ margin: '0 0 12px 0', fontSize: 14, color: 'var(--text)' }}>Contatos Fixos (Em azul adicionados ao final de cada lote)</h3>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: 14, color: 'var(--text)' }}>Contatos Fixos (Em azul adicionados ao final de cada arquivo)</h3>
             <div className="fixed-contacts-form" style={{ marginBottom: controlRows.length > 0 ? 12 : 0 }}>
               <input
                 type="text"
