@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { read, utils, write } from 'xlsx';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-import { FixedSizeList as List } from 'react-window';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { FileDown, UploadCloud, Shuffle, Trash2, UserX } from 'lucide-react';
 import './index.css';
 
@@ -209,7 +209,16 @@ export default function App() {
     }));
   }
 
-  const Row = ({ index, style }: { index: number, style: React.CSSProperties }) => {
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const rowVirtualizer = useVirtualizer({
+    count: data.length + controlRows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 48,
+    overscan: 5,
+  });
+
+  const RowComponent = React.useCallback(({ index, style }: { index: number, style: React.CSSProperties }) => {
     if (index >= data.length) {
       const ctrlIndex = index - data.length;
       const ctrl = controlRows[ctrlIndex];
@@ -273,7 +282,7 @@ export default function App() {
         ))}
       </div>
     );
-  };
+  }, [data, controlRows, headers, nameColIndex, phoneColIndex, duplicatesSet]);
 
   async function exportZip() {
     const rowsToExport = removeDuplicates(data);
@@ -350,31 +359,31 @@ export default function App() {
               value={controlPhone}
               onChange={e => {
                 let raw = e.target.value;
+                
                 if (raw === '+55 ' || raw === '+55' || raw === '+5' || raw === '+') {
                   setControlPhone('');
                   return;
                 }
 
-                if (raw.startsWith('+55 ')) {
-                  raw = raw.substring(4);
-                } else if (raw.startsWith('+55')) {
-                  raw = raw.substring(3);
+                let digits = raw.replace(/\D/g, '');
+                
+                if (digits.startsWith('55') && digits.length > 2) {
+                  digits = digits.substring(2);
                 }
-
-                let value = raw.replace(/\D/g, '');
-                if (value.length > 11) value = value.slice(0, 11);
+                
+                if (digits.length > 11) digits = digits.slice(0, 11);
 
                 let formatted = '';
-                if (value.length > 0) {
+                if (digits.length > 0) {
                   formatted = '+55 ';
-                  if (value.length > 10) {
-                    formatted += `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7)}`;
-                  } else if (value.length > 6) {
-                    formatted += `(${value.slice(0, 2)}) ${value.slice(2, 6)}-${value.slice(6)}`;
-                  } else if (value.length > 2) {
-                    formatted += `(${value.slice(0, 2)}) ${value.slice(2)}`;
+                  if (digits.length > 10) {
+                    formatted += `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+                  } else if (digits.length > 6) {
+                    formatted += `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+                  } else if (digits.length > 2) {
+                    formatted += `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
                   } else {
-                    formatted += `(${value}`;
+                    formatted += `(${digits}`;
                   }
                 }
                 setControlPhone(formatted);
@@ -385,6 +394,13 @@ export default function App() {
               className="btn btn-secondary"
               onClick={() => {
                 if (controlName.trim() || controlPhone.trim()) {
+                  const phoneOnly = controlPhone.replace(/\D/g, '');
+                  
+                  setData(prev => prev.filter(row => {
+                    const rowPhone = String(row[phoneColIndex] ?? '').replace(/\D/g, '');
+                    return rowPhone !== phoneOnly;
+                  }));
+                  
                   setControlRows(prev => [...prev, { name: controlName, phone: controlPhone }]);
                   setControlName('');
                   setControlPhone('');
@@ -464,16 +480,16 @@ export default function App() {
             </div>
           ))}
         </div>
-        <div className="table-container">
-          <List
-            height={500}
-            itemCount={data.length > 0 ? data.length + controlRows.length : 0}
-            itemSize={48}
-            width="100%"
-          >
-            {/* @ts-ignore */}
-            {Row}
-          </List>
+        <div className="table-container" style={{ height: 500 }}>
+          {data.length > 0 && (
+            <div ref={parentRef} style={{ height: '100%', overflow: 'auto' }}>
+              <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
+                {rowVirtualizer.getVirtualItems().map((virtualRow) => (
+                  <RowComponent key={virtualRow.index} index={virtualRow.index} style={{ position: 'absolute', top: virtualRow.start, height: virtualRow.size, width: '100%' }} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
