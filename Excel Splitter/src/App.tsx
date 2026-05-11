@@ -4,7 +4,7 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { createPortal } from 'react-dom';
-import { FileDown, UploadCloud, Shuffle, Trash2, UserX } from 'lucide-react';
+import { FileDown, UploadCloud, Shuffle, Trash2, UserX, Type, Phone } from 'lucide-react';
 import './index.css';
 
 export default function App() {
@@ -97,10 +97,12 @@ export default function App() {
     e.target.value = '';
   };
 
-  function findPhoneColumn(rows: any[][]) {
+  function findPhoneColumn(rows: any[][], headers: any[]) {
     let bestColIndex = 0;
-    let maxPhoneCount = 0;
-    for (let col = 0; col < (rows[0]?.length || 0); col++) {
+    let maxPhoneCount = -1;
+    const maxCols = Math.max(headers.length, ...rows.slice(0, 20).map(r => r?.length || 0), 2);
+
+    for (let col = 0; col < maxCols; col++) {
       let phoneCount = 0;
       for (let row = 0; row < Math.min(rows.length, 20); row++) {
         let val = String(rows[row]?.[col] ?? '').replace(/\D/g, '');
@@ -140,7 +142,7 @@ export default function App() {
         Array.isArray(row) && row.some(cell => cell != null && String(cell).trim() !== '')
       );
 
-      const phoneCol = findPhoneColumn(dataRows);
+      const phoneCol = findPhoneColumn(dataRows, parsedHeaders);
 
       let nameCol = parsedHeaders.findIndex(h => String(h).toLowerCase().includes('nome'));
       if (nameCol === -1) {
@@ -226,6 +228,39 @@ export default function App() {
   const uniqueData = useMemo(() => removeDuplicates(data), [data, phoneColIndex]);
   const duplicateCount = data.length - uniqueData.length;
 
+  const formatNamesCount = useMemo(() => {
+    return data.filter(row => {
+      const nameVal = String(row[nameColIndex] ?? '').trim();
+      if (!nameVal) return false;
+      const parts = nameVal.split(/\s+/);
+      if (parts.length > 0 && parts[0]) {
+        const expected = parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase();
+        return nameVal !== expected;
+      }
+      return false;
+    }).length;
+  }, [data, nameColIndex]);
+
+  const formatPhonesCount = useMemo(() => {
+    return data.filter(row => {
+      const phoneVal = String(row[phoneColIndex] ?? '');
+      if (!phoneVal) return false;
+      let numOnly = phoneVal.replace(/\D/g, '');
+      if (!/^55\d{10,11}$/.test(numOnly)) {
+        numOnly = '55' + numOnly;
+      }
+      return phoneVal !== numOnly;
+    }).length;
+  }, [data, phoneColIndex]);
+
+  const emptyCount = useMemo(() => {
+    return data.filter(row => {
+      const nameVal = String(row[nameColIndex] ?? '').trim();
+      const phoneVal = String(row[phoneColIndex] ?? '').replace(/\D/g, '');
+      return nameVal === '' || phoneVal.length < 8;
+    }).length;
+  }, [data, nameColIndex, phoneColIndex]);
+
   function shuffleData() {
     setData(prev => {
       const newData = [...prev];
@@ -242,6 +277,43 @@ export default function App() {
       const nameVal = String(row[nameColIndex] ?? '').trim();
       const phoneVal = String(row[phoneColIndex] ?? '').replace(/\D/g, '');
       return nameVal !== '' && phoneVal.length >= 8;
+    }));
+  }
+
+  function formatNames() {
+    setData(prev => prev.map(row => {
+      const newRow = [...row];
+      let nameVal = String(newRow[nameColIndex] ?? '').trim();
+      if (nameVal) {
+        const parts = nameVal.split(/\s+/);
+        if (parts.length > 0 && parts[0]) {
+          const firstName = parts[0];
+          newRow[nameColIndex] = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+        }
+      }
+      return newRow;
+    }));
+  }
+
+  function formatPhones() {
+    setData(prev => prev.map(row => {
+      const newRow = [...row];
+      let phoneVal = String(newRow[phoneColIndex] ?? '');
+
+      if (phoneVal) {
+        // Remove caracteres não numéricos
+        phoneVal = phoneVal.replace(/\D/g, '');
+
+        // Se NÃO começar com código do Brasil + DDD + número
+        // adiciona o 55 do país
+        if (!/^55\d{10,11}$/.test(phoneVal)) {
+          phoneVal = '55' + phoneVal;
+        }
+
+        newRow[phoneColIndex] = phoneVal;
+      }
+
+      return newRow;
     }));
   }
 
@@ -489,29 +561,43 @@ export default function App() {
 
         <div className="stats-bar">
           <div className="stat-group">
-            <div className="stat-item">
-              <span className="stat-label">Total de Linhas</span>
-              <span className="stat-value">{data.length}</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-label">Duplicados</span>
-              <span className="stat-value" style={{ color: duplicateCount > 0 ? 'var(--danger)' : 'var(--text)' }}>
-                {duplicateCount}
+            <div className="stat-item" style={{ display: 'flex', flexDirection: 'column' }}>
+              <span className="stat-label" style={{ fontSize: 14, fontWeight: 600 }}>
+                Total de Contatos
+              </span>
+              <span className="stat-value">
+                {data.length}
+              </span>
+              <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--text-light)', marginTop: 4 }}>
+                (Contatos fixos não estão inclusos na contagem)
               </span>
             </div>
           </div>
           <div className="actions-group">
-            <button onClick={shuffleData} disabled={data.length === 0} className="btn btn-secondary">
+            <button onClick={shuffleData} disabled={data.length === 0} className="btn btn-secondary action-btn">
               <Shuffle style={{ width: 16, height: 16 }} />
               Embaralhar
             </button>
-            <button onClick={removeEmptyNames} disabled={data.length === 0} className="btn btn-secondary">
+            <button onClick={formatNames} disabled={data.length === 0} className="btn btn-secondary action-btn" title="Manter apenas primeiro nome com a primeira letra maiúscula">
+              <Type style={{ width: 16, height: 16 }} />
+              Formatar Nomes
+              {formatNamesCount > 0 && <span className="badge badge-warning">{formatNamesCount}</span>}
+            </button>
+            <button onClick={formatPhones} disabled={data.length === 0} className="btn btn-secondary action-btn" title="Manter apenas os números">
+              <Phone style={{ width: 16, height: 16 }} />
+              Formatar Telefones
+              {formatPhonesCount > 0 && <span className="badge badge-warning">{formatPhonesCount}</span>}
+            </button>
+
+            <button onClick={removeEmptyNames} disabled={data.length === 0} className="btn btn-secondary action-btn">
               <UserX style={{ width: 16, height: 16 }} />
               Remover Vazios
+              {emptyCount > 0 && <span className="badge badge-warning">{emptyCount}</span>}
             </button>
-            <button onClick={() => setData(uniqueData)} disabled={duplicateCount === 0} className="btn btn-danger">
+            <button onClick={() => setData(uniqueData)} disabled={duplicateCount === 0} className="btn btn-danger action-btn">
               <Trash2 style={{ width: 16, height: 16 }} />
               Remover Duplicados
+              {duplicateCount > 0 && <span className="badge badge-danger">{duplicateCount}</span>}
             </button>
           </div>
         </div>
